@@ -26,7 +26,8 @@ export default function RootLayout({
         <body className={inter.className}>
           <Topbar />
           
-          <main>
+          {/* Alinea los 3 componentes en una fila */}
+          <main className='flex flex-row'>
             <LeftSidebar />
 
             <section className='main-container'>
