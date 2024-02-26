@@ -5,7 +5,7 @@ import '../globals.css';
 
 export const metadata = {
   title: 'Threads',
-  description: 'An next 14 Meta threads app',
+  description: 'A next 14 Meta threads app',
 };
 
 const inter = Inter({ subsets: ['latin'] });
