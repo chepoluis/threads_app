@@ -28,20 +28,55 @@ export async function createThread({
       author,
       community: null,
     });
-  
+
     // Update user model
     // await User.findByIdAndUpdate(author, {
     //   $push: { threads: createThread._id },
     // });
-    
+
     await User.findOneAndUpdate(
       { id: author }, // Buscar por el campo id personalizado
       { $push: { threads: createThread._id } },
       { new: true } // Devuelve el documento modificado
     );
-  
+
     revalidatePath(path); // Update the changes on the client
-  } catch(error: any) {
-    throw new Error(`Error creating thread: ${error.message}`)
+  } catch (error: any) {
+    throw new Error(`Error creating thread: ${error.message}`);
   }
+}
+
+export async function fetchPosts(pageNumber = 1, pageSize = 20) {
+  connectToDB();
+
+  // Calculate the number of post to skip
+  const skipAmount = (pageNumber - 1) * pageSize;
+
+  // Fetch the post that have no parents (top-leve threads)
+  const postQuery = Thread.find({ parentId: { $in: [null, undefined] } })
+    .sort({ createdAt: 'desc' })
+    .skip(skipAmount)
+    .limit(pageSize)
+    .populate({ path: 'author', model: User })
+    .populate({
+      path: 'children',
+      populate: {
+        path: 'author',
+        model: User,
+        select: '_id name parentId image',
+      },
+    });
+
+  const totalPostCount = await Thread.countDocuments({
+    parentId: { $in: [null, undefined] },
+  });
+
+  const posts = await postQuery.exec();
+
+  const isNext = totalPostCount > skipAmount + posts.length;
+
+  return {
+    posts,
+    isNext,
+  };
 }
