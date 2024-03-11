@@ -10,13 +10,13 @@ const Page = async () => {
 
   const userInfo = await fetchUser(user.id);
 
-  if (!userInfo.onboarded) redirect('/onboarding');
+  if (!userInfo?.onboarded) redirect('/onboarding');
 
   return (
     <>
       <h1 className='head-text'>Create thread</h1>
       
-      <PostThread userId={userInfo.id} />
+      <PostThread userId={userInfo._id} />
     </>
   );
 };
