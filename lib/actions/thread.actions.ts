@@ -30,19 +30,9 @@ export async function createThread({
       community: null,
     });
 
-    // Update user model
-    // await User.findByIdAndUpdate(author, {
-    //   $push: { threads: createThread._id },
-    // });
     await User.findByIdAndUpdate(author, {
       $push: { threads: createThread._id },
     });
-
-    // await User.findOneAndUpdate(
-    //   { id: author }, // Buscar por el campo id personalizado
-    //   { $push: { threads: createThread._id } },
-    //   { new: true } // Devuelve el documento modificado
-    // );
 
     revalidatePath(path); // Update the changes on the client
   } catch (error: any) {
@@ -55,21 +45,6 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
 
   // Calculate the number of post to skip
   const skipAmount = (pageNumber - 1) * pageSize;
-
-  // Fetch the post that have no parents (top-leve threads)
-  // const postQuery = Thread.find({ parentId: { $in: [null, undefined] } })
-  //   .sort({ createdAt: 'desc' })
-  //   .skip(skipAmount)
-  //   .limit(pageSize)
-  //   // .populate({ path: 'author', model: User }) // error
-  //   .populate({
-  //     path: 'children',
-  //     populate: {
-  //       path: 'author',
-  //       model: User,
-  //       select: '_id name parentId image',
-  //     },
-  //   });
 
   // Create a query to fetch the posts that have no parent (top-level threads) (a thread that is not a comment/reply).
   const postQuery = Thread.find({ parentId: { $in: [null, undefined] } })
@@ -105,4 +80,78 @@ export async function fetchPosts(pageNumber = 1, pageSize = 20) {
     posts,
     isNext,
   };
+}
+
+export async function fetchThreadById(id: string) {
+  try {
+    connectToDB();
+
+    const thread = await Thread.findById(id)
+      .populate({
+        path: 'author',
+        model: User,
+        select: '_id id name image',
+      })
+      .populate({
+        path: 'children',
+        populate: [
+          {
+            path: 'author',
+            model: User,
+            select: '_id id name parentId image',
+          },
+          {
+            path: 'children',
+            model: Thread,
+            populate: {
+              path: 'author',
+              model: User,
+              select: '_id id name parentId image',
+            }
+          }
+        ]
+      }).exec();
+
+      return thread;
+  } catch(error: any) {
+    throw new Error(`Error fetching thread: ${error.message}`);
+  }
+}
+
+export async function addCommentToThread(
+  threadId: string,
+  commentText: string,
+  userId: string,
+  path: string,
+) {
+  connectToDB();
+
+  try {
+    // Find the original thread its ID
+    const originalThread = await Thread.findById(threadId);
+
+    if (!originalThread) {
+      throw new Error('Thread not found :c');
+    }
+
+    //  Create new thread with the comment text
+    const commentThread = new Thread({
+      text: commentText,
+      author: userId,
+      parentId: threadId
+    });
+
+    // Save the new thread
+    const savedCommentThread = await commentThread.save();
+
+    // Update the original thread to include the new comment
+    originalThread.children.push(savedCommentThread._id);
+
+    // Save the original thread
+    await originalThread.save();
+
+    revalidatePath(path); // Vuelve de cierta manera recargar la pagina para mostar los datos actualizados
+  } catch(error: any) {
+    throw new Error(`Error adding comment to thread: ${error.message}`);
+  }
 }

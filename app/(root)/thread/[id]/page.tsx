@@ -1,33 +1,73 @@
 import ThreadCard from '@/components/cards/ThreadCard';
+import Comments from '@/components/forms/Comments';
+import { fetchThreadById } from '@/lib/actions/thread.actions';
 import { fetchUser } from '@/lib/actions/user.actions';
 import { currentUser } from '@clerk/nextjs';
 import { redirect } from 'next/navigation';
+import { FC } from 'react';
 
-const Page = async ({ params }: { id: string }) => {
+interface InterfacePage {
+  params: {
+    id: string;
+  };
+}
+
+const Page: FC<InterfacePage> = async ({ params }) => {
+  console.log('asdasdsd', params);
   if (!params.id) return null;
 
   const user = await currentUser();
   if (!user) return null;
 
   const userInfo = await fetchUser(user.id);
-  if(!userInfo.onboarded) redirect('/onboarding');
+  if (!userInfo.onboarded) redirect('/onboarding');
 
-  // const thread = await fetchThreadById(params.id);
+  const thread = await fetchThreadById(params.id);
+  console.log('Thread...');
+  console.log(thread);
 
   return (
     <section className='relative'>
       <div>
-      <ThreadCard
-        key={thread._id}
-        id={thread._id}
-        currentUserId={user?.id || ''}
-        parentId={thread.parentId}
-        content={thread.text}
-        author={thread.author}
-        community={thread.community}
-        createdAt={thread.createdAt}
-        comments={thread.children}
-      />
+        <ThreadCard
+          key={thread?._id}
+          id={thread?._id}
+          currentUserId={user?.id || ''}
+          parentId={thread?.parentId}
+          content={thread?.text}
+          author={thread?.author}
+          community={thread?.community}
+          createdAt={thread?.createdAt}
+          comments={thread?.children}
+        />
+      </div>
+
+      <div className='mt-7'>
+        <Comments
+          threadId={thread?.id}
+          currentUserImg={userInfo?.image}
+          currentUserId={JSON.stringify(userInfo?._id)}
+        />
+      </div>
+
+      <div className='mt-10'>
+        {thread.children.map((childItem: any) => {
+          console.log(childItem);
+          return (
+            <ThreadCard
+              key={childItem?._id}
+              id={childItem?._id}
+              currentUserId={childItem?.id || ''}
+              parentId={childItem?.parentId}
+              content={childItem?.text}
+              author={childItem?.author}
+              community={childItem?.community}
+              createdAt={childItem?.createdAt}
+              comments={childItem?.children}
+              isComment
+            />
+          );
+        })}
       </div>
     </section>
   );
